@@ -7,25 +7,33 @@ on:
   pull_request:
 
 jobs:
-  docker-build:
+  docker-build-and-push:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show project files
-        run: ls -la
-
       - name: Validate PHP syntax
         run: php -l index.php
 
       - name: Build Docker image
-        run: docker build -t mi-app-php:test .
+        run: docker build -t dgarcgon/mi-app-php-devops:latest .
 
       - name: Run container smoke test
         run: |
-          docker run -d --name mi-app-php-test -p 8000:8000 mi-app-php:test
+          docker run -d --name mi-app-php-test -p 8000:8000 dgarcgon/mi-app-php-devops:latest
           sleep 5
           curl -f http://localhost:8000
           docker stop mi-app-php-test
+
+      - name: Login to Docker Hub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push Docker image
+        if: github.event_name == 'push'
+        run: docker push dgarcgon/mi-app-php-devops:latest
